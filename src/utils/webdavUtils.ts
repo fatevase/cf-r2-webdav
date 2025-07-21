@@ -8,11 +8,23 @@ export function make_resource_path(request: Request): string {
 }
 
 export async function* listAll(bucket: R2Bucket, prefix: string) {
-  const options = { prefix, delimiter: "/" };
+  const options = { prefix, delimiter: "/" }; // 按层级获取直接子项
   let result = await bucket.list(options);
+  
+  while (true) {
+    // 处理直接子目录（从 delimitedPrefixes 提取）
+    for (const dirPrefix of result.delimitedPrefixes || []) {
+      yield {
+        key: dirPrefix,
+        size: 0,
+        uploaded: new Date(),
+        customMetadata: { resourcetype: "collection" },
+        httpMetadata: {}
+      };
+    }
 
-  while (result.objects.length > 0) {
-    for (const object of result.objects) {
+    // 处理直接子文件（从 objects 提取）
+    for (const object of result.objects || []) {
       yield object;
     }
 
@@ -23,6 +35,7 @@ export async function* listAll(bucket: R2Bucket, prefix: string) {
     }
   }
 }
+
 
 export function fromR2Object(object: R2Object | null): WebDAVProps {
   if (!object) {

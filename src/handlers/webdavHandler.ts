@@ -98,29 +98,33 @@ async function handleGet(request: Request, bucket: R2Bucket, bucketName: string)
 
 async function handleDirectory(bucket: R2Bucket, resource_path: string, bucketName: string): Promise<Response> {
   let items = [];
-
   if (resource_path !== "") {
     items.push({ name: "📁 ..", href: "../" });
   }
 
   try {
+    // 仅获取当前目录的直接子项（不递归）
     for await (const object of listAll(bucket, resource_path)) {
       if (object.key === resource_path) continue;
+      
       const isDirectory = object.customMetadata?.resourcetype === "collection";
-      const displayName = object.key.split('/').pop() || object.key;
-      const href = `/${object.key}${isDirectory ? "/" : ""}`;
-      items.push({ name: `${isDirectory ? '📁 ' : '📄 '}${displayName}`, href });
+      const href = isDirectory ? `/${object.key}` : `/${object.key}`;
+      const displayName = object.displayname || object.key.split("/").pop() || object.key;
+      
+      items.push({ 
+        name: `${isDirectory ? "📁 " : "📄 "}${displayName}`, 
+        href 
+      });
     }
-  } catch (error) { 
-    const err = error as Error;
-    logger.error("Error listing objects:", err.message);
-    return new Response(generateErrorHTML("Error listing directory contents", err.message), {
+  } catch (error) {
+    logger.error("Error listing objects:", error.message);
+    return new Response(generateErrorHTML("Error listing directory contents", error.message), {
       status: 500,
       headers: { "Content-Type": "text/html; charset=utf-8" }
     });
   }
 
-  const page = generateHTML("WebDAV File Browser", items);
+  const page = generateHTML(`WebDAV File Browser[${bucketName}]`, items);
   return new Response(page, {
     status: 200,
     headers: { "Content-Type": "text/html; charset=utf-8" }
