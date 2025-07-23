@@ -62,16 +62,16 @@ export function fromR2Object(object: R2Object | null): WebDAVProps {
   };
 }
 
-export function generatePropfindResponse(bucketName: string, basePath: string, props: WebDAVProps[]): string {
-  const responses = props.map(prop => generatePropResponse(bucketName, basePath, prop)).join("\n");
+export function generatePropfindResponse(basePath: string, props: WebDAVProps[]): string {
+  const responses = props.map(prop => generatePropResponse(basePath, prop)).join("\n");
   return `<?xml version="1.0" encoding="utf-8" ?>
   <D:multistatus xmlns:D="DAV:">
 ${responses}
   </D:multistatus>`;
 }
 
-function generatePropResponse(bucketName: string, basePath: string, prop: WebDAVProps): string {
-  const resourcePath = `/${bucketName}/${basePath}${prop.displayname ? '/' + prop.displayname : ''}`;
+function generatePropResponse(basePath: string, prop: WebDAVProps): string {
+  const resourcePath = `/${basePath}/${prop.displayname}`.replace(/\/+/g, "/");
   return `  <D:response>
     <D:href>${resourcePath}</D:href>
     <D:propstat>
